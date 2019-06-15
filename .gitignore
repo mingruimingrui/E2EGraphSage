@@ -1,0 +1,4 @@
+# Editor
+.flake8
+.vscode
+.ipynb_checkpoints
