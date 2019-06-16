@@ -2,3 +2,7 @@
 .flake8
 .vscode
 .ipynb_checkpoints
+
+# pycache
+__pycache__
+*.pyc
