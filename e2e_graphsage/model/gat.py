@@ -10,6 +10,8 @@ from collections import Callable, Iterable
 VALID_AGGREGATE_METHODS = {'concat', 'cat', 'average', 'avg'}
 DEFAULT_ACTIVATION_ATTN = torch.nn.LeakyReLU(0.2, inplace=True)
 
+__all__ = ['GATLayer', 'GAT']
+
 
 class GATLayer(torch.nn.Module):
     def __init__(

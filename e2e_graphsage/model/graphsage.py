@@ -10,6 +10,8 @@ from collections import Callable, Iterable
 VALID_POOLING_METHODS = {'max', 'min', 'mean'}
 DEFAULT_ACIVATION_NEIGH = torch.nn.modules.activation.ReLU(inplace=True)
 
+__all__ = ['SageLayer', 'GraphSage']
+
 
 class SageLayer(torch.nn.Module):
     def __init__(
