@@ -5,10 +5,15 @@ default_collate = torch.utils.data._utils.collate.default_collate
 
 class DummyDataLoader:
     """
-    This is a dummy class to be used as a drop in for torch dataloader
-    Used inplace of the standard torch.utils.data.DataLoader because of the
-    high overhead cost of the messenger queue.
-    It is highly recommended to set query_dataset with list to True
+    This is a dummy class to be used as a drop in for
+    torch.utils.data.DataLoader
+
+    Significantly this dataloader would function much faster on tensor
+    datasets. This dataloader would also function faster for torch
+    datasets which accepts a list of idxs for their __getitem__ function
+    and is optimized for the list type of inputs.
+
+    However this class does not support the user of multiple workers (yet!)
     """
     def __init__(
         self,
@@ -19,7 +24,7 @@ class DummyDataLoader:
         batch_sampler=None,
         collate_fn=default_collate,
         drop_last=False,
-        query_dataset=True
+        do_get_items=True
     ):
         self.dataset = dataset
         self.batch_size = batch_size
@@ -49,10 +54,10 @@ class DummyDataLoader:
 
         self.sampler = sampler
         self.batch_sampler = batch_sampler
-        self.query_dataset = bool(query_dataset)
+        self.do_get_items = bool(do_get_items)
 
     def __iter__(self):
-        if self.query_dataset:
+        if self.do_get_items:
             for b in self.batch_sampler:
                 new_batch = self.dataset[b]
                 yield self.collate_fn(new_batch)
