@@ -70,14 +70,27 @@ class GATLayer(torch.nn.Module):
         self.fc_attn_self = torch.nn.ModuleList(fc_attn_self)
         self.fc_attn_neigh = torch.nn.ModuleList(fc_attn_neigh)
 
-    def forward(self, inputs):
-        x_self, x_neigh = inputs
-
+    def forward(self, x_self, x_neigh, mask=None):
+        """
+        x_self_shape ~
+            (batch_size, prior_sample_size, feature_size)
+        x_neigh_shape ~
+            (batch_size, prior_sample_size, sample_size, feature_size)
+        mask_shape ~
+            (batch_size, prior_sample_size, sample_size, 1)
+        """
         # Allign self and neighbor axis
         x_self = x_self.unsqueeze(dim=-2)
 
         # To allow self loop, simply appen self to neighbors
         x_all = torch.cat([x_self, x_neigh], dim=-2)
+
+        # If mask should be applied, then we get the mask for x_all
+        if mask is not None:
+            mask_all = torch.cat([
+                torch.ones_like(mask[:, :, :1]),
+                mask
+            ], dim=2).unsqueeze(-1)
 
         # Apply head attn head
         h_out = []
@@ -88,6 +101,10 @@ class GATLayer(torch.nn.Module):
             attn_logits_all = attn_logits_self + attn_logits_neigh
             if self.activation_attn is not None:
                 attn_logits_all = self.activation_attn(attn_logits_all)
+
+            # Apply neighbor mask if needed
+            if mask is not None:
+                attn_weights = attn_logits_all * mask_all
 
             # Get attn weights
             attn_weights = torch.nn.functional.softmax(
@@ -172,12 +189,19 @@ class GAT(torch.nn.Module):
                 'activation_out should be callable'
         self.activation_out = activation_out
 
-    def forward(self, hierarchical_input_embeddings):
+    def forward(self, hierarchical_input_embeddings, masks=None):
         assert len(hierarchical_input_embeddings) == self.depth + 1, (
             'GAT built with depth of {}, '
             'received hierarchical input embeddings with len {}. '
             'hierarchical input embeddings should have size of depth + 1'
         ).format(self.depth, len(hierarchical_input_embeddings))
+
+        if masks is not None:
+            assert len(masks) == self.depth, (
+                'GAT built with depth of {}, '
+                'received masks with len {}. '
+                'masks should have size of depth'
+            ).format(self.depth, len(hierarchical_input_embeddings))
 
         # Initial state is equal to input embeddings
         current_hidden_states = list(hierarchical_input_embeddings)
@@ -204,7 +228,17 @@ class GAT(torch.nn.Module):
                     self.layer_input_sizes[i]
                 )
 
-                current_hidden_states[j] = layer((x_self, x_neigh))
+                if masks is None:
+                    current_hidden_states[j] = layer(x_self, x_neigh)
+                else:
+                    mask = masks[j]
+                    mask = mask.reshape(
+                        -1,
+                        self.cum_expansion_rates[j],
+                        self.expansion_rates[j],
+                        1
+                    )
+                    current_hidden_states[j] = layer(x_self, x_neigh, mask)
 
         h_out = self.fc(current_hidden_states[0])
 

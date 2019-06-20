@@ -65,15 +65,25 @@ class SageLayer(torch.nn.Module):
             bias=bool(use_bias_out)
         )
 
-    def forward(self, inputs):
-        x_self, x_neigh = inputs
-
+    def forward(self, x_self, x_neigh, mask=None):
+        """
+        x_self_shape ~
+            (batch_size, prior_sample_size, feature_size)
+        x_neigh_shape ~
+            (batch_size, prior_sample_size, sample_size, feature_size)
+        mask_shape ~
+            (batch_size, prior_sample_size, sample_size, 1)
+        """
         # Apply linear layer to all nodes
         h_self = self.fc_self(x_self)
         h_neigh = self.fc_neigh(x_neigh)
 
         if self.activation_neigh is not None:
             h_neigh = self.activation_neigh(h_neigh)
+
+        # Apply neighbor mask if needed
+        if mask is not None:
+            h_neigh = h_neigh * mask
 
         # Aggregate neighbors
         if self.pooling_method == 'max':
@@ -160,12 +170,19 @@ class GraphSage(torch.nn.Module):
                 'activation_out should be callable'
         self.activation_out = activation_out
 
-    def forward(self, hierarchical_input_embeddings):
+    def forward(self, hierarchical_input_embeddings, masks):
         assert len(hierarchical_input_embeddings) == self.depth + 1, (
             'GraphSage built with depth of {}, '
             'received hierarchical input embeddings with len {}. '
             'hierarchical input embeddings should have size of depth + 1'
         ).format(self.depth, len(hierarchical_input_embeddings))
+
+        if masks is not None:
+            assert len(masks) == self.depth, (
+                'GAT built with depth of {}, '
+                'received masks with len {}. '
+                'masks should have size of depth'
+            ).format(self.depth, len(hierarchical_input_embeddings))
 
         # Initial state is equal to input embeddings
         current_hidden_states = list(hierarchical_input_embeddings)
@@ -192,7 +209,17 @@ class GraphSage(torch.nn.Module):
                     self.layer_input_sizes[i]
                 )
 
-                current_hidden_states[j] = layer((x_self, x_neigh))
+                if masks is None:
+                    current_hidden_states[j] = layer(x_self, x_neigh)
+                else:
+                    mask = masks[j]
+                    mask = mask.reshape(
+                        -1,
+                        self.cum_expansion_rates[j],
+                        self.expansion_rates[j],
+                        1
+                    )
+                    current_hidden_states[j] = layer(x_self, x_neigh, mask)
 
         h_out = self.fc(current_hidden_states[0])
 
