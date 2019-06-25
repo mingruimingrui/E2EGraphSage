@@ -5,7 +5,7 @@ import random
 import argparse
 import warnings
 import subprocess
-from six import text_type
+from six import text_type, binary_type
 
 import h5py
 import numpy as np
@@ -19,6 +19,7 @@ from pytorch_pretrained_bert.tokenization import (
 from e2e_graphsage.utils.checking import is_positive_integer
 
 VALID_VERTEX_FEATURE_TYPES = {'embedding', 'sentence', 'tokens'}
+H5PY_VARLEN_ASCII_DTYPE = h5py.special_dtype(vlen=binary_type)
 
 
 def parse_args():
@@ -369,7 +370,7 @@ def import_from_tsv(
         f.create_dataset(
             'node_names',
             shape=(len(node_names),),
-            dtype=h5py.special_dtype(vlen=bytes),
+            dtype=H5PY_VARLEN_ASCII_DTYPE,
             data=node_names
         )
         f['node_features'] = np.array(node_features, dtype=np.int64)
@@ -377,7 +378,7 @@ def import_from_tsv(
             f.create_dataset(
                 'vertex_label_names',
                 shape=(len(len(vertex_label_names)),),
-                dtype=h5py.special_dtype(vlen=bytes),
+                dtype=H5PY_VARLEN_ASCII_DTYPE,
                 data=vertex_label_names
             )
             f['vertex_labels'] = np.array(vertex_labels, dtype=np.int64)
@@ -395,7 +396,7 @@ def import_from_tsv(
             f.create_dataset(
                 'invalid_node_names',
                 shape=(len(invalid_node_names),),
-                dtype=h5py.special_dtype(vlen=bytes),
+                dtype=H5PY_VARLEN_ASCII_DTYPE,
                 data=invalid_node_names
             )
     else:
@@ -413,7 +414,7 @@ def import_from_tsv(
             f.create_dataset(
                 'edge_label_names',
                 shape=(len(len(edge_label_names)),),
-                dtype=h5py.special_dtype(vlen=bytes),
+                dtype=H5PY_VARLEN_ASCII_DTYPE,
                 data=edge_label_names
             )
             f['adjacency_node_id_list'] = np.array(
