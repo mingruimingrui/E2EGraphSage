@@ -87,14 +87,14 @@ class SageLayer(torch.nn.Module):
 
         # Aggregate neighbors
         if self.pooling_method == 'max':
-            h_pool = h_neigh.max(axis=-2)
+            h_pool, _ = h_neigh.max(dim=-2)
 
         elif self.pooling_method == 'min':
-            h_pool = h_neigh.min(axis=-2)
+            h_pool, _ = h_neigh.min(dim=-2)
 
         else:
             # pooling_method == 'mean'
-            h_pool = h_neigh.mean(axis=-2)
+            h_pool = h_neigh.mean(dim=-2)
 
         # Apply linear layer to aggregated neighbors
         h_pool = self.fc_pool(h_pool)
@@ -123,7 +123,7 @@ class GraphSage(torch.nn.Module):
         use_bias_out=False,
         activation_out=None
     ):
-        super(GraphSage, self).__init__(self)
+        super(GraphSage, self).__init__()
 
         assert isinstance(expansion_rates, Iterable), \
             'expansion_rates should be a list of integers'
@@ -133,7 +133,7 @@ class GraphSage(torch.nn.Module):
             assert isinstance(r, integer_types) and r > 0, \
                 'expansion_rates should be a list of positive integers'
 
-        self.expansion_rates = expansion_rates,
+        self.expansion_rates = expansion_rates
         self.depth = len(expansion_rates)
         self.cum_expansion_rates = \
             [1] + np.cumprod(expansion_rates).tolist()[:-1]
@@ -162,7 +162,7 @@ class GraphSage(torch.nn.Module):
         self.fc = torch.nn.Linear(
             inner_feature_size * 2,
             output_feature_size,
-            use_bias_out=bool(use_bias_out)
+            bias=bool(use_bias_out)
         )
 
         if activation_out is not None:
@@ -221,7 +221,7 @@ class GraphSage(torch.nn.Module):
                     )
                     current_hidden_states[j] = layer(x_self, x_neigh, mask)
 
-        h_out = self.fc(current_hidden_states[0])
+        h_out = self.fc(current_hidden_states[0][:, 0].contiguous())
 
         if self.activation_out is not None:
             h_out = self.activation_out(h_out)

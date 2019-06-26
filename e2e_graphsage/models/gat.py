@@ -141,7 +141,7 @@ class GAT(torch.nn.Module):
         use_bias_out=False,
         activation_out=None
     ):
-        super(GAT, self).__init__(self)
+        super(GAT, self).__init__()
 
         assert isinstance(expansion_rates, Iterable), \
             'expansion_rates should be a list of integers'

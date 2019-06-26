@@ -7,7 +7,6 @@ import warnings
 import torch.utils.data
 
 from ...utils.batching import batch as batch_fn
-from ...utils.checking import is_positive_integer, is_non_negative_integer
 
 
 class NegativeBatchSampler(torch.utils.data.BatchSampler):
@@ -38,10 +37,15 @@ class NegativeBatchSampler(torch.utils.data.BatchSampler):
             num_hard_negative_samples: The number of hard negative samples
                 to sample for each example
         """
-        assert is_positive_integer(dataset_len)
-        assert is_positive_integer(num_iters)
-        assert is_positive_integer(batch_size)
-        assert is_non_negative_integer(num_hard_negative_samples)
+        assert isinstance(dataset_len, int) and dataset_len > 0, \
+            'dataset_len should be a positive number'
+        assert isinstance(num_iters, int) and num_iters > 0, \
+            'num_iters should be a positive number'
+        assert isinstance(batch_size, int) and batch_size > 0, \
+            'batch_size should be a positive number'
+        assert isinstance(num_hard_negative_samples, int) and \
+            num_hard_negative_samples >= 0, \
+            'num_hard_negative_samples should be a non negative number'
 
         if num_hard_negative_samples > 0:
             assert labels is not None, \
@@ -56,7 +60,7 @@ class NegativeBatchSampler(torch.utils.data.BatchSampler):
                 self.unique_label_to_idx[l].append(i)
 
             for l, idx_set in self.unique_label_to_idx.items():
-                if len(idx_set) >= num_hard_negative_samples + 1:
+                if len(idx_set) < num_hard_negative_samples + 1:
                     warn_msg = (
                         'label {} has less number of entries than num_hard '
                         'num_hard_negative_samples + 1'
@@ -72,6 +76,7 @@ class NegativeBatchSampler(torch.utils.data.BatchSampler):
         self.dataset_len = dataset_len
         self.num_iters = num_iters
         self.batch_size = batch_size
+        self.minibatch_size = minibatch_size
         self.num_hard_negative_samples = num_hard_negative_samples
 
     def __len__(self):
@@ -81,7 +86,7 @@ class NegativeBatchSampler(torch.utils.data.BatchSampler):
         # Populate groups
         order = []
         while len(order) < self.num_iters * self.minibatch_size:
-            _order = list(range(self.range(self.dataset_len)))
+            _order = list(range(self.dataset_len))
             random.shuffle(_order)
             order += _order
         groups = batch_fn(order, self.minibatch_size)
@@ -105,7 +110,7 @@ class NegativeBatchSampler(torch.utils.data.BatchSampler):
                     if len(all_hard_negatives) <= num_to_sample:
                         hard_negative_samples = all_hard_negatives
                     else:
-                        hard_negative_samples = random.shuffle(
+                        hard_negative_samples = random.sample(
                             all_hard_negatives, num_to_sample)
 
                     # Remove self

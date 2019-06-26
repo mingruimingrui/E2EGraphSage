@@ -1,7 +1,6 @@
-from .graphsage import GraphSage, SageLayer
-from .gat import GAT, GATLayer
+from .hierarchical import ToHierarchicalList
 
-__all__ = [
-    'GraphSage', 'SageLayer',
-    'GAT', 'GATLayer'
-]
+from .gat import GAT
+from .graphsage import GraphSage
+
+__all__ = ['ToHierarchicalList', 'GAT', 'GraphSage']

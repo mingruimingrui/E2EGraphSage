@@ -36,13 +36,16 @@ class ToHierarchicalList(torch.nn.Module):
         assert isinstance(adjacency_list, torch.Tensor) or \
             isinstance(adjacency_list, np.ndarray), \
             'adjacency_list should be an array'
-        adjacency_list = torch.from_numpy(adjacency_list)
+        if not isinstance(adjacency_list, torch.Tensor):
+            adjacency_list = torch.from_numpy(adjacency_list)
         assert not adjacency_list.dtype.is_floating_point, \
             'adjacency_list should be an int array'
 
         assert isinstance(input_features, torch.Tensor) or \
             isinstance(input_features, np.ndarray), \
             'input_features should be an array'
+        if not isinstance(adjacency_list, torch.Tensor):
+            input_features = torch.from_numpy(input_features)
         assert len(adjacency_list) == len(input_features), \
             'adjacency_list and input_features should have same length'
 
@@ -60,17 +63,17 @@ class ToHierarchicalList(torch.nn.Module):
         self.adjacency_list = torch.nn.Parameter(
             adjacency_list.long(), requires_grad=False)
         self.input_features = torch.nn.Parameter(
-            torch.from_numpy(input_features), requires_grad=False)
+            input_features, requires_grad=False)
 
     def forward(self, src_nodeids):
-        hierarchical_nodeids = [src_nodeids]
-        hierarchical_input_features = [self.input_features[src_nodeids]]
+        batch_size = src_nodeids.size(0)
+        hierarchical_nodeids = [src_nodeids.unsqueeze(1)]
         for r in self.expansion_rates:
             neighbor_nodeids = self.adjacency_list[hierarchical_nodeids[-1]]
             sampled_cols = torch.randperm(self.adjacency_list_size)[:r]
-            neighbor_nodeids = neighbor_nodeids[:, sampled_cols]
-            neighbor_nodeids = neighbor_nodeids.reshape(-1)
-            hierarchical_nodeids.append(neighbor_nodeids)
-            hierarchical_input_features.append(
-                self.input_features[neighbor_nodeids])
+            neighbor_nodeids = neighbor_nodeids[..., sampled_cols]
+            neighbor_nodeids = neighbor_nodeids.reshape(batch_size, -1)
+            hierarchical_nodeids.append(neighbor_nodeids.contiguous())
+        hierarchical_input_features = \
+            [self.input_features[i].contiguous() for i in hierarchical_nodeids]
         return hierarchical_nodeids, hierarchical_input_features

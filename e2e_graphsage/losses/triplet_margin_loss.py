@@ -36,6 +36,8 @@ class TripletMarginLoss(torch.nn.Module):
         swap=False,
         reduction='mean'
     ):
+        super(TripletMarginLoss, self).__init__()
+
         assert distance_fn in VALID_DISTANCE_FNS, \
             'distance_fn should be one of {}, got {}'.format(
                 VALID_DISTANCE_FNS, distance_fn)
@@ -80,7 +82,7 @@ class TripletMarginLoss(torch.nn.Module):
 
             if not loss_only:
                 all_aff = torch.cat([pos_aff.unsqueeze(0), neg_aff], dim=0)
-                indices_of_ranks = all_aff.argsort(dim=-1, descending=True)
+                indices_of_ranks = all_aff.argsort(dim=0, descending=True)
 
         elif self.distance_fn in {'l2', 'euclidean'}:
             pos_dist = ((A - P) ** 2).sum(dim=-1)
@@ -93,7 +95,7 @@ class TripletMarginLoss(torch.nn.Module):
 
             if not loss_only:
                 all_dist = torch.cat([pos_dist.unsqueeze(0), neg_dist], dim=0)
-                indices_of_ranks = all_dist.argsort(dim=-1, descending=False)
+                indices_of_ranks = all_dist.argsort(dim=0, descending=False)
 
         elif self.distance_fn in {'l1'}:
             pos_dist = (A - P).abs().sum(dim=-1)
@@ -106,12 +108,13 @@ class TripletMarginLoss(torch.nn.Module):
 
             if not loss_only:
                 all_dist = torch.cat([pos_dist.unsqueeze(0), neg_dist], dim=0)
-                indices_of_ranks = all_dist.argsort(dim=-1, descending=False)
+                indices_of_ranks = all_dist.argsort(dim=0, descending=False)
 
         else:
             # distance_fn in {'huber', 'smooth_l1'}
             raise NotImplementedError('Huber loss not yet implemented')
 
+        loss = torch.nn.functional.relu(loss)
         if self.reduction == 'mean':
             loss = loss.mean()
         elif self.reduction == 'sum':
@@ -121,6 +124,7 @@ class TripletMarginLoss(torch.nn.Module):
             return loss
 
         else:
-            ranks = indices_of_ranks.argsort(dim=-1)[:, 0] + 1
-            rr = 1 / ranks.float()
+            ranks = indices_of_ranks.argsort(dim=0)[0] + 1
+            ranks = ranks.float()
+            rr = 1 / ranks
             return loss, ranks.mean(), rr.mean()  # MRR is mean of all RR
