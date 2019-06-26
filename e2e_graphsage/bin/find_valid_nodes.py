@@ -53,30 +53,30 @@ def find_valid_nodes(
         adjacency_list = f['adjacency_list'][:]
 
     # Find valid node ids
-    def _find_valid_node_ids(valid_node_ids, adjacency_list):
-        new_valid_node_ids = set()
+    def _find_valid_nodeids(valid_nodeids, adjacency_list):
+        new_valid_nodeids = set()
         desc = 'Finding valid nodes'
-        for node_id in tqdm.tqdm(valid_node_ids, desc=desc, ncols=80):
+        for nodeid in tqdm.tqdm(valid_nodeids, desc=desc, ncols=80):
             num_valid_neighbors = 0
-            row = adjacency_list[node_id]
+            row = adjacency_list[nodeid]
             for neighbor_id in row[row != -1]:
-                if neighbor_id in valid_node_ids:
+                if neighbor_id in valid_nodeids:
                     num_valid_neighbors += 1
             if num_valid_neighbors >= cutoff:
-                new_valid_node_ids.add(node_id)
-        return new_valid_node_ids
+                new_valid_nodeids.add(nodeid)
+        return new_valid_nodeids
 
-    valid_node_ids = set(range(len(adjacency_list)))
+    valid_nodeids = set(range(len(adjacency_list)))
     for i in range(depth):
         print('Starting to find at depth - {}'.format(i))
-        valid_node_ids = _find_valid_node_ids(
-            valid_node_ids,
+        valid_nodeids = _find_valid_nodeids(
+            valid_nodeids,
             adjacency_list
         )
-    valid_node_ids = list(valid_node_ids)
-    valid_node_ids.sort()
+    valid_nodeids = list(valid_nodeids)
+    valid_nodeids.sort()
 
-    return valid_node_ids
+    return valid_nodeids
 
 
 def write_node_names_to_file(node_names, filename):
@@ -87,16 +87,16 @@ def write_node_names_to_file(node_names, filename):
 
 def main():
     args = parse_args()
-    valid_node_ids = find_valid_nodes(
+    valid_nodeids = find_valid_nodes(
         save_prefix=args.save_prefix,
         depth=args.depth,
         cutoff=args.cutoff
     )
-    print('Found {} valid nodes'.format(len(valid_node_ids)))
+    print('Found {} valid nodes'.format(len(valid_nodeids)))
 
     with h5py.File(args.save_prefix + '.h5', 'r') as f:
         node_names = f['node_names'][:]
-    valid_node_names = node_names[valid_node_ids]
+    valid_node_names = node_names[valid_nodeids]
 
     print('Writing valid node ids to file')
     if args.num_val is not None:
@@ -104,11 +104,11 @@ def main():
             'num_val should be a non negative integer'
 
         random.shuffle(valid_node_names)
-        train_node_ids = valid_node_names[args.num_val:]
-        val_node_ids = valid_node_names[:args.num_val]
+        train_nodeids = valid_node_names[args.num_val:]
+        val_nodeids = valid_node_names[:args.num_val]
 
-        write_node_names_to_file(train_node_ids, args.output_file + '.train')
-        write_node_names_to_file(val_node_ids, args.output_file + '.val')
+        write_node_names_to_file(train_nodeids, args.output_file + '.train')
+        write_node_names_to_file(val_nodeids, args.output_file + '.val')
 
     elif args.train_val_split == 1:
         write_node_names_to_file(valid_node_names, args.output_file)
@@ -121,11 +121,11 @@ def main():
         num_train = int(num_train)
 
         random.shuffle(valid_node_names)
-        train_node_ids = valid_node_names[:num_train]
-        val_node_ids = valid_node_names[num_train:]
+        train_nodeids = valid_node_names[:num_train]
+        val_nodeids = valid_node_names[num_train:]
 
-        write_node_names_to_file(train_node_ids, args.output_file + '.train')
-        write_node_names_to_file(val_node_ids, args.output_file + '.val')
+        write_node_names_to_file(train_nodeids, args.output_file + '.train')
+        write_node_names_to_file(val_nodeids, args.output_file + '.val')
 
 
 if __name__ == "__main__":
