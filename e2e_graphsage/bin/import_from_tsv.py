@@ -15,8 +15,6 @@ import tqdm
 import time
 import datetime
 
-from ..utils.batching import chunk as chunk_fn
-
 
 SCRIPT_DESCRIPTION = "Parse tsv files into input format"
 
