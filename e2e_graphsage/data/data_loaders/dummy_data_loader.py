@@ -18,6 +18,7 @@ class DummyDataLoader(object):
         sampler=None,
         batch_sampler=None,
         collate_fn=default_collate,
+        drop_last=False,
         get_with_list=False
     ):
         self.dataset = dataset
@@ -43,7 +44,7 @@ class DummyDataLoader(object):
                     sampler = RandomSampler(dataset)
                 else:
                     sampler = SequentialSampler(dataset)
-            batch_sampler = BatchSampler(sampler, batch_size)
+            batch_sampler = BatchSampler(sampler, batch_size, drop_last)
 
         self.sampler = sampler
         self.batch_sampler = batch_sampler
