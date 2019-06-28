@@ -51,6 +51,9 @@ class GATLayer(torch.nn.Module):
         self.num_attn_heads = num_attn_heads
         self.aggregate_method = aggregate_method
 
+        self.activation_attn = activation_attn
+        self.activation_out = activation_out
+
         fc = []
         fc_attn_self = []
         fc_attn_neigh = []
@@ -90,7 +93,7 @@ class GATLayer(torch.nn.Module):
             mask_all = torch.cat([
                 torch.ones_like(mask[:, :, :1]),
                 mask
-            ], dim=2).unsqueeze(-1)
+            ], dim=2)
 
         # Apply head attn head
         h_out = []
@@ -165,7 +168,7 @@ class GAT(torch.nn.Module):
                 layer_input_size = inner_feature_size * num_attn_heads
 
             layer_input_sizes.append(layer_input_size)
-            conv_layers.append(GAT(
+            conv_layers.append(GATLayer(
                 input_feature_size=layer_input_size,
                 inner_feature_size=inner_feature_size,
                 num_attn_heads=num_attn_heads,
@@ -181,7 +184,7 @@ class GAT(torch.nn.Module):
         self.fc = torch.nn.Linear(
             inner_feature_size * num_attn_heads,
             output_feature_size,
-            use_bias_out=bool(use_bias_out)
+            bias=bool(use_bias_out)
         )
 
         if activation_out is not None:
@@ -240,7 +243,7 @@ class GAT(torch.nn.Module):
                     )
                     current_hidden_states[j] = layer(x_self, x_neigh, mask)
 
-        h_out = self.fc(current_hidden_states[0])
+        h_out = self.fc(current_hidden_states[0][:, 0].contiguous())
 
         if self.activation_out is not None:
             h_out = self.activation_out(h_out)
