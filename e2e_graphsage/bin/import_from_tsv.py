@@ -3,7 +3,6 @@ from __future__ import division
 
 import os
 import random
-import warnings
 import argparse
 
 import snap
@@ -40,8 +39,8 @@ contains exactly 1 tab (or 2 if vertices_contain_labels).
               len but expects tokens to be non negative integers and contiguous
     - sentence: a text sentence
 
-- Third column (if vertices_contain_labels) should contain the label_id
-  label_ids are expected to be contiguous non-negative integers
+- Third column (if vertices_contain_labels) should contain the label name, this
+  name will be interpreted as a string
 """
 
 EDGES_CSV_HELP_MSG = """
@@ -96,6 +95,12 @@ def parse_args():
     return parser.parse_args()
 
 
+def cast_to_binary(text):
+    if not isinstance(text, binary_type):
+        text = text.encode('utf-8', errors='ignore')
+    return text
+
+
 def extract_vertex_infos_from_tsv(
     vertices_tsv_filepath,
     vertices_data_format='embeddings',
@@ -109,7 +114,7 @@ def extract_vertex_infos_from_tsv(
     expected_num_cols = 3 if vertices_contain_labels else 2
     node_names = []
     node_features = []
-    vertex_labels = [] if vertices_contain_labels else None
+    node_label_names = [] if vertices_contain_labels else None
 
     def parse_line(line):
         if line.endswith(b'\n'):
@@ -122,7 +127,7 @@ def extract_vertex_infos_from_tsv(
 
         node_names.append(row[0])
         node_features.append(row[1])
-        vertex_labels.append(row[2])
+        node_label_names.append(row[2])
 
     # Read vertices_tsv line by line
     with open(vertices_tsv_filepath, 'rb') as f:
@@ -132,16 +137,6 @@ def extract_vertex_infos_from_tsv(
     # Ensure that node_names are unique
     assert len(node_names) == len(set(node_names)), \
         'There are repeated nodes in vertices_tsv'
-
-    def cast_to_binary(text):
-        if isinstance(text, binary_type):
-            binary = text
-        else:
-            binary = text.encode('utf-8', errors='ignore')
-        return binary
-
-    node_names = list(map(cast_to_binary, node_names))
-    node_names = np.array(node_names)
 
     # Parse node_features
     # todo: use multiprocessing for this part
@@ -164,20 +159,18 @@ def extract_vertex_infos_from_tsv(
         raise ValueError('{} is not a valid vertices_data_format'.format(
             vertices_data_format))
 
+    label_names = None
+    node_label_ids = None
     if vertices_contain_labels:
-        # Parse vertex_labels
-        vertex_labels = list(map(int, vertex_labels))
-        assert all(map(lambda x: x >= 0, vertex_labels)), \
-            'vertex_labels are expected to be non negative integers'
-        num_classes = max(vertex_labels) + 1
-        unique_given_vertex_labels = set(vertex_labels)
-        for i in range(num_classes):
-            if i not in unique_given_vertex_labels:
-                warning_msg = 'No examples for class {} is given'.format(i)
-                warnings.warn(warning_msg)
-        vertex_labels = np.array(vertex_labels, dtype=np.int64)
+        # Get all unique labels
+        label_names = list(set(node_label_names))
+        label_names.sort()
 
-    return node_names, node_features, vertex_labels
+        # Convert node_label_names into a contiguous int form
+        label_name_to_idx = dict(zip(label_names, range(len(label_names))))
+        node_label_ids = [label_name_to_idx[n] for n in node_label_names]
+
+    return node_names, node_features, label_names, node_label_ids
 
 
 def extract_adjacency_list_from_tsv(
@@ -291,18 +284,20 @@ def import_from_tsv(
     # Init h5 file
     with h5py.File(h5_filepath, 'w') as f:
         f['vertices_contain_labels'] = vertices_contain_labels
-        f['vertices_data_format'] = vertices_data_format
+        f['vertices_data_format'] = cast_to_binary(vertices_data_format)
+        f['unidirectional_edges'] = unidirectional_edges
         if vertices_data_format != 'embeddings':
             f['max_num_tokens'] = max_num_tokens
 
     # Read vertices_tsv
-    node_names, node_features, vertex_labels = extract_vertex_infos_from_tsv(
-        vertices_tsv_filepath=vertices_tsv_filepath,
-        vertices_data_format=vertices_data_format,
-        vertices_contain_labels=vertices_contain_labels,
-        max_num_tokens=max_num_tokens,
-        num_workers=num_workers
-    )
+    node_names, node_features, label_names, node_label_ids = \
+        extract_vertex_infos_from_tsv(
+            vertices_tsv_filepath=vertices_tsv_filepath,
+            vertices_data_format=vertices_data_format,
+            vertices_contain_labels=vertices_contain_labels,
+            max_num_tokens=max_num_tokens,
+            num_workers=num_workers
+        )
     with h5py.File(h5_filepath, 'r+') as f:
         f.create_dataset(
             'node_names',
@@ -312,8 +307,15 @@ def import_from_tsv(
         )
         f['node_features'] = node_features
         if vertices_contain_labels:
-            f['vertex_labels'] = vertex_labels
-    del node_features, vertex_labels
+            f['num_classes'] = len(label_names)
+            f.create_dataset(
+                'label_names',
+                shape=(len(label_names),),
+                dtype=H5PY_VARLEN_ASCII_DTYPE,
+                data=label_names
+            )
+            f['node_label_ids'] = node_label_ids
+    del node_features
 
     # Read edges_tsv
     G, adjacency_list = extract_adjacency_list_from_tsv(
