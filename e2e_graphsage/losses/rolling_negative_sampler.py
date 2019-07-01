@@ -21,6 +21,6 @@ class RollingNegativeSampler(torch.nn.Module):
     def forward(self, embeddings):
         negative_samples = []
         for i in range(1, self.num_negative_samples + 1):
-            negative_samples.append(embeddings.roll(i))
+            negative_samples.append(embeddings.roll(i, dims=0))
         negative_samples = torch.stack(negative_samples, dim=0)
         return negative_samples

@@ -44,7 +44,7 @@ class ToHierarchicalList(torch.nn.Module):
         assert isinstance(input_features, torch.Tensor) or \
             isinstance(input_features, np.ndarray), \
             'input_features should be an array'
-        if not isinstance(adjacency_list, torch.Tensor):
+        if not isinstance(input_features, torch.Tensor):
             input_features = torch.from_numpy(input_features)
         assert len(adjacency_list) == len(input_features), \
             'adjacency_list and input_features should have same length'
