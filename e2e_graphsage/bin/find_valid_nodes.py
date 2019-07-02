@@ -1,5 +1,14 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+This script can be used to identify valid training nodes from an imported graph
+"""
+
+from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 
 import tqdm
 import h5py
