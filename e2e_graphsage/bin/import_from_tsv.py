@@ -17,7 +17,7 @@ import argparse
 import snap
 import h5py
 import numpy as np
-from six import binary_type
+from six import text_type, binary_type
 
 import tqdm
 import time
@@ -59,7 +59,7 @@ This should be a header-less tab separated file containing 2 columns
 - Second column should the destination node name
 """
 
-H5PY_VARLEN_ASCII_DTYPE = h5py.special_dtype(vlen=binary_type)
+H5PY_VARLEN_UNICODE_DTYPE = h5py.special_dtype(vlen=text_type)
 VALID_VERTEX_DATA_FORMATS = {'embeddings', 'tokens', 'sentence'}
 
 
@@ -105,8 +105,14 @@ def parse_args():
 
 
 def cast_to_binary(text):
-    if not isinstance(text, binary_type):
+    if isinstance(text, text_type):
         text = text.encode('utf-8', errors='ignore')
+    return text
+
+
+def cast_to_unicode(text):
+    if isinstance(text, binary_type):
+        text = text.decode('utf-8', errors='ignore')
     return text
 
 
@@ -126,9 +132,9 @@ def extract_vertex_infos_from_tsv(
     node_label_names = [] if vertices_contain_labels else None
 
     def parse_line(line):
-        if line.endswith(b'\n'):
+        if line.endswith('\n'):
             line = line[:-1]
-        row = line.split(b'\t')
+        row = line.split('\t')
         assert len(row) == expected_num_cols, (
             'Found row in vertices_tsv that does not match expected '
             'number of columns, expected {} columns, got {}. raw line: {}'
@@ -139,7 +145,7 @@ def extract_vertex_infos_from_tsv(
         node_label_names.append(row[2])
 
     # Read vertices_tsv line by line
-    with open(vertices_tsv_filepath, 'rb') as f:
+    with open(vertices_tsv_filepath, 'r') as f:
         for line in tqdm.tqdm(f, desc='Reading vertices_tsv', ncols=80):
             parse_line(line)
 
@@ -199,9 +205,9 @@ def extract_adjacency_list_from_tsv(
         G.AddNode(node_name_to_idx[node_name])
 
     def parse_line(line):
-        if line.endswith(b'\n'):
+        if line.endswith('\n'):
             line = line[:-1]
-        row = line.split(b'\t')
+        row = line.split('\t')
         assert len(row) == 2, (
             'Found row in edges_tsv that does not match expected '
             'number of columns, expected {} columns, got {}. raw line: {}'
@@ -222,10 +228,10 @@ def extract_adjacency_list_from_tsv(
 
     # Read edges_tsv line by line
     num_edges = 0
-    with open(edges_tsv_filepath, 'rb') as f:
+    with open(edges_tsv_filepath, 'r') as f:
         for _ in tqdm.tqdm(f, desc='Counting edges_tsv lines', ncols=80):
             num_edges += 1
-    with open(edges_tsv_filepath, 'rb') as f:
+    with open(edges_tsv_filepath, 'r') as f:
         pbar = tqdm.tqdm(
             f,
             total=num_edges,
@@ -293,7 +299,7 @@ def import_from_tsv(
     # Init h5 file
     with h5py.File(h5_filepath, 'w') as f:
         f['vertices_contain_labels'] = vertices_contain_labels
-        f['vertices_data_format'] = cast_to_binary(vertices_data_format)
+        f['vertices_data_format'] = cast_to_unicode(vertices_data_format)
         f['unidirectional_edges'] = unidirectional_edges
         if vertices_data_format != 'embeddings':
             f['max_num_tokens'] = max_num_tokens
@@ -311,8 +317,8 @@ def import_from_tsv(
         f.create_dataset(
             'node_names',
             shape=(len(node_names),),
-            dtype=H5PY_VARLEN_ASCII_DTYPE,
-            data=node_names
+            dtype=H5PY_VARLEN_UNICODE_DTYPE,
+            data=[cast_to_unicode(n) for n in node_names]
         )
         f['node_features'] = node_features
         if vertices_contain_labels:
@@ -320,8 +326,8 @@ def import_from_tsv(
             f.create_dataset(
                 'label_names',
                 shape=(len(label_names),),
-                dtype=H5PY_VARLEN_ASCII_DTYPE,
-                data=label_names
+                dtype=H5PY_VARLEN_UNICODE_DTYPE,
+                data=[cast_to_unicode(n) for n in label_names]
             )
             f['node_label_ids'] = node_label_ids
     del node_features

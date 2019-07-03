@@ -89,9 +89,9 @@ def find_valid_nodes(
 
 
 def write_node_names_to_file(node_names, filename):
-    with open(filename, 'wb') as f:
+    with open(filename, 'w') as f:
         for node_name in node_names:
-            f.write(node_name + b'\n')
+            f.write(node_name + '\n')
 
 
 def main():
