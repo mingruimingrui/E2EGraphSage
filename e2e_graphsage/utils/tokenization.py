@@ -310,5 +310,4 @@ class BertTokenizer(object):
     def save_vocabulary(self, vocab_path):
         raise Exception(
             'This function exists in the original BertTokenizer '
-            'but is not needed here.'
-        )
+            'but is not needed here.')
