@@ -7,8 +7,10 @@ default_collate = _utils.collate.default_collate
 class DummyDataLoader(object):
     """
     This is a dummy class to be used as a drop in for torch dataloader
-    Used inplace of the standard torch.utils.data.DataLoader because of the
-    high overhead cost of the messenger queue
+    Use this inplace of the standard torch.utils.data.DataLoader when
+    overhead cost of the messenger queue is too high
+    As messenger queue is the assumed bottleneck, this dataloader is single
+    threaded.
     """
     def __init__(
         self,
