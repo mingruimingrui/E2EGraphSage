@@ -19,6 +19,7 @@ from six import binary_type
 import sentencepiece as spm
 
 VOCAB_NAME = 'vocab.txt'
+DEFAULT_NEVER_SPLIT = ('<unk>', '<sep>', '<pad>', '<cls>', '<mask>')
 
 
 def _is_whitespace(char):
@@ -128,12 +129,7 @@ class BasicTokenizer(object):
     def __init__(
         self,
         do_lower_case=True,
-        unk_token='<unk>',
-        sep_token='<sep>',
-        pad_token='<pad>',
-        cls_token='<cls>',
-        mask_token='<mask>',
-        never_split=('<unk>', '<sep>', '<pad>', '<cls>', '<mask>'),
+        never_split=DEFAULT_NEVER_SPLIT,
         keep_punc=True
     ):
         """Constructs a BasicTokenizer.
@@ -144,11 +140,6 @@ class BasicTokenizer(object):
                 Punctuation class but we treat them as punctuation anyways
         """
         self.do_lower_case = do_lower_case
-        self.unk_token = unk_token
-        self.sep_token = sep_token
-        self.pad_token = pad_token
-        self.cls_token = cls_token
-        self.mask_token = mask_token
         self.never_split = set(never_split)
         self.keep_punc = keep_punc
 
@@ -199,12 +190,7 @@ class BertTokenizer(object):
         do_lower_case=True,
         max_len=None,
         do_basic_tokenize=True,
-        unk_token='<unk>',
-        sep_token='<sep>',
-        pad_token='<pad>',
-        cls_token='<cls>',
-        mask_token='<mask>',
-        never_split=('<unk>', '<sep>', '<pad>', '<cls>', '<mask>'),
+        never_split=DEFAULT_NEVER_SPLIT,
         keep_punc=True
     ):
         """Constructs a BertTokenizer.
@@ -253,11 +239,6 @@ class BertTokenizer(object):
         if do_basic_tokenize:
             self.basic_tokenier = BasicTokenizer(
                 do_lower_case=do_lower_case,
-                unk_token=unk_token,
-                sep_token=sep_token,
-                pad_token=pad_token,
-                cls_token=cls_token,
-                mask_token=mask_token,
                 never_split=never_split,
                 keep_punc=keep_punc
             )
